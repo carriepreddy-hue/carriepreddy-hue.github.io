@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K-Pop Dance Hunt</title>
+<style>
+  :root{
+    --bg:#0a0618; --panel:#150b2e; --panel2:#1d1040; --line:#3a2370;
+    --pink:#ff3ea5; --cyan:#35e8ff; --yellow:#ffe14d; --green:#5dff9a; --violet:#9b6bff; --red:#ff4d5e;
+    --text:#f3ecff; --muted:#9a8bc7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif}
+  body{min-height:100vh;background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255,62,165,.18), transparent 60%),
+    radial-gradient(900px 600px at 0% 110%, rgba(53,232,255,.14), transparent 60%), var(--bg)}
+  header{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);background:rgba(10,6,24,.8);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+  h1{margin:0;font-size:22px;letter-spacing:2px;text-transform:uppercase;
+     background:linear-gradient(90deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .spacer{flex:1}
+  .status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+  .dot.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+  .dot.sim{background:var(--yellow);box-shadow:0 0 10px var(--yellow)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:10px;transition:.15s}
+  button:hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(53,232,255,.35)}
+  button.primary{background:linear-gradient(90deg,var(--pink),var(--violet));border:none;font-weight:700;letter-spacing:1px}
+  button.primary:hover{box-shadow:0 0 18px rgba(255,62,165,.6)}
+  main{display:grid;grid-template-columns:minmax(300px,560px) minmax(300px,1fr);gap:18px;padding:18px 20px;max-width:1280px;margin:0 auto}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),#100825);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .stage{position:relative;padding:0;overflow:hidden}
+  canvas{display:block;width:100%;height:auto;border-radius:16px}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:rgba(10,6,24,.78);padding:20px}
+  .overlay.hidden{display:none}
+  .overlay h2{margin:0;font-size:34px;letter-spacing:3px;text-transform:uppercase}
+  .overlay p{margin:0;color:var(--muted);max-width:360px;line-height:1.5}
+  .big{font-size:96px;font-weight:900;color:var(--yellow);text-shadow:0 0 30px var(--yellow)}
+  .demon{display:flex;gap:16px;align-items:center}
+  .demon svg{width:130px;height:130px;flex:none;filter:drop-shadow(0 0 14px var(--pink))}
+  .demon.hit svg{animation:shake .25s}
+  @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-7px,2px) rotate(-3deg)}50%{transform:translate(7px,-2px) rotate(3deg)}80%{transform:translate(-4px,1px)}}
+  .dinfo{flex:1;min-width:0}
+  .dname{font-size:20px;font-weight:800;letter-spacing:1px;color:var(--pink)}
+  .dsub{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .bar{height:18px;border-radius:9px;background:#07030f;border:1px solid var(--line);overflow:hidden}
+  .bar>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--red),var(--pink));transition:width .15s}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+  .stat b{display:block;font-size:24px;color:var(--cyan)}
+  .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  h3{margin:18px 0 8px;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  .players{display:grid;gap:8px}
+  .player{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);opacity:.45;transition:.2s}
+  .player.seen{opacity:1}
+  .player.flash{border-color:var(--cyan);box-shadow:0 0 16px rgba(53,232,255,.5)}
+  .badge{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#10051f}
+  .pname{font-weight:700}
+  .pmeta{font-size:11px;color:var(--muted)}
+  .pscore{font-size:22px;font-weight:900;color:var(--yellow);font-variant-numeric:tabular-nums}
+  .last{font-size:11px;color:var(--cyan)}
+  details{margin-top:14px}
+  summary{cursor:pointer;color:var(--muted);font-size:13px;letter-spacing:1px;text-transform:uppercase}
+  .matrix{display:grid;grid-template-columns:auto repeat(5,1fr);gap:6px;margin-top:10px;align-items:center}
+  .matrix button{padding:7px 0;font-weight:700}
+  .matrix .lbl{font-size:12px;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;display:none;z-index:9}
+  .results table{width:100%;border-collapse:collapse;margin-top:6px}
+  .results td,.results th{padding:6px 8px;font-size:14px;border-bottom:1px solid var(--line)}
+  .results th{color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;text-align:left}
+  kbd{background:#07030f;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>K-Pop Dance Hunt</h1>
+  <div class="spacer"></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></div>
+  <button id="btnConnect">Connect bridge micro:bit</button>
+  <button id="btnMute">Sound: on</button>
+</header>
+
+<main>
+  <section class="card stage">
+    <canvas id="game" width="560" height="660"></canvas>
+    <div class="overlay" id="ovStart">
+      <h2>Dance the demons out!</h2>
+      <p>Hold your micro:bit and match the falling moves on the beat. Tilt left, tilt right, logo up, logo down, and <b>shake</b> on the star notes.</p>
+      <button class="primary" id="btnStart">Start the hunt</button>
+    </div>
+    <div class="overlay hidden" id="ovCount"><div class="big" id="countNum">3</div></div>
+    <div class="overlay hidden results" id="ovResults">
+      <h2>Hunt complete</h2>
+      <p id="resSummary"></p>
+      <div style="width:100%;max-width:400px"><table id="resTable"></table></div>
+      <button class="primary" id="btnAgain">Hunt again</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <div class="demon" id="demonBox">
+        <svg viewBox="0 0 120 120" id="demonSvg" aria-hidden="true"></svg>
+        <div class="dinfo">
+          <div class="dname" id="dName">Waiting...</div>
+          <div class="dsub" id="dSub">Demon level 1</div>
+          <div class="bar"><i id="hp"></i></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sScore">0</b><span>Team score</span></div>
+        <div class="stat"><b id="sCombo">0</b><span>Combo</span></div>
+        <div class="stat"><b id="sAcc">--</b><span>Accuracy</span></div>
+        <div class="stat"><b id="sBan">0</b><span>Banished</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin-top:0">Dancers</h3>
+      <div class="players" id="players"></div>
+      <p class="pmeta" style="margin:10px 0 0">A dancer appears (and lights up) the first time their micro:bit sends a move.</p>
+
+      <details id="teacher" open>
+        <summary>Teacher override / test matrix</summary>
+        <div class="matrix" id="matrix"></div>
+        <div class="row">
+          <button id="btnBot">Demo bot: off</button>
+          <button id="btnResetScores">Reset scores</button>
+          <button id="btnStop">Stop the hunt</button>
+          <button id="btnSim">Simulate bridge</button>
+        </div>
+        <p class="pmeta" style="margin-top:10px">Keyboard: Player 1 uses <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>Space</kbd>. Player 2 uses <kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>E</kbd>.</p>
+      </details>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+  // ---------- constants ----------
+  const MOVES = ['L','R','U','D','S'];
+  const MOVE_LABEL = {L:'LEFT',R:'RIGHT',U:'UP',D:'DOWN',S:'SHAKE'};
+  const MOVE_ICON  = {L:'\u2190',R:'\u2192',U:'\u2191',D:'\u2193',S:'\u2605'};
+  const LANE_COL   = {L:'#35e8ff',R:'#ff3ea5',U:'#5dff9a',D:'#ffe14d',S:'#b18cff'};
+  const P_COL = ['','#ff3ea5','#35e8ff','#5dff9a','#ffe14d','#b18cff','#ff9a4d','#4da6ff','#ff6b6b'];
+  const MAX_PLAYERS = 8;
+  const BPM = 96, BEAT = 60 / BPM, TOTAL_BEATS = 96, FIRST_NOTE_BEAT = 4;
+  const COUNTIN = 3.0;
+  const LEAD = 2.2;                 // seconds a note takes to fall
+  const PERFECT = 0.14, GOOD = 0.32; // hit windows (seconds)
+  // Six original demon types. c = outline colour, e = eye colour. All drawn in a 120x120 box.
+  const DEMON_TYPES = [
+    {name:'Gloomfang', kind:'Fang Imp', c:'#ff3ea5', e:'#35e8ff', hp:1.0, art:(c,e)=>`
+      <path d="M22 44 L10 8 L44 28Z" fill="#3b0d4f" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M98 44 L110 8 L76 28Z" fill="#3b0d4f" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="60" cy="70" rx="42" ry="40" fill="#2a0a3d" stroke="${c}" stroke-width="3"/>
+      <path d="M30 62 Q42 50 54 64 Q42 70 30 62Z" fill="${e}"/><path d="M90 62 Q78 50 66 64 Q78 70 90 62Z" fill="${e}"/>
+      <path d="M34 90 Q60 108 86 90" fill="#07030f" stroke="${c}" stroke-width="3"/>
+      <path d="M44 93 L48 101 L52 95 L58 103 L62 95 L68 101 L72 93" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>`},
+    {name:'Mirrorwraith', kind:'Shard Phantom', c:'#35e8ff', e:'#ffe14d', hp:1.1, art:(c,e)=>`
+      <path d="M18 112 V58 Q18 12 60 12 Q102 12 102 58 V112 L86 98 L73 112 L60 98 L47 112 L34 98Z" fill="#0d2745" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M60 12 L52 40 L66 58 L50 84" fill="none" stroke="${c}" stroke-width="2" opacity=".7"/>
+      <path d="M30 54 L42 44 L54 56 L42 66Z" fill="${e}"/><path d="M90 54 L78 44 L66 56 L78 66Z" fill="${e}"/>
+      <path d="M44 82 L60 74 L76 82 L60 90Z" fill="#07030f" stroke="${c}" stroke-width="2"/>`},
+    {name:'Hollow Choir', kind:'Chorus Beast', c:'#5dff9a', e:'#ff3ea5', hp:1.2, art:(c,e)=>`
+      <ellipse cx="60" cy="62" rx="44" ry="50" fill="#0f2a22" stroke="${c}" stroke-width="3"/>
+      <circle cx="36" cy="40" r="8" fill="${e}"/><circle cx="60" cy="30" r="9" fill="${e}"/><circle cx="84" cy="40" r="8" fill="${e}"/>
+      <circle cx="36" cy="40" r="3" fill="#07030f"/><circle cx="60" cy="30" r="3.5" fill="#07030f"/><circle cx="84" cy="40" r="3" fill="#07030f"/>
+      <ellipse cx="60" cy="82" rx="24" ry="20" fill="#07030f" stroke="${c}" stroke-width="3"/>
+      <path d="M44 70 V78 M52 68 V76 M60 67 V75 M68 68 V76 M76 70 V78" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`},
+    {name:'Static Fiend', kind:'Glitch Spirit', c:'#b18cff', e:'#5dff9a', hp:1.3, art:(c,e)=>`
+      <path d="M40 22 L28 4 M80 22 L92 4" stroke="${c}" stroke-width="3" stroke-linecap="round"/><circle cx="28" cy="4" r="3" fill="${e}"/><circle cx="92" cy="4" r="3" fill="${e}"/>
+      <rect x="14" y="22" width="92" height="84" rx="12" fill="#1c1040" stroke="${c}" stroke-width="3"/>
+      <g stroke="${c}" stroke-width="2" opacity=".35"><path d="M18 36H102M18 50H102M18 64H102M18 78H102M18 92H102"/></g>
+      <rect x="30" y="44" width="20" height="16" fill="${e}"/><rect x="70" y="44" width="20" height="16" fill="${e}"/>
+      <rect x="36" y="48" width="8" height="8" fill="#07030f"/><rect x="76" y="48" width="8" height="8" fill="#07030f"/>
+      <path d="M32 84 L42 76 L52 86 L62 76 L72 86 L82 76 L90 84" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="14" y="68" width="30" height="5" fill="${e}" opacity=".7"/>`},
+    {name:'Mothveil', kind:'Moth Duchess', c:'#ffe14d', e:'#ff3ea5', hp:1.4, art:(c,e)=>`
+      <path d="M58 56 Q10 6 6 58 Q8 96 56 78Z" fill="#3a2a05" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M62 56 Q110 6 114 58 Q112 96 64 78Z" fill="#3a2a05" stroke="${c}" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="26" cy="50" r="8" fill="${e}" opacity=".85"/><circle cx="94" cy="50" r="8" fill="${e}" opacity=".85"/>
+      <ellipse cx="60" cy="72" rx="20" ry="30" fill="#2a1a05" stroke="${c}" stroke-width="3"/>
+      <path d="M54 44 Q44 22 36 16 M66 44 Q76 22 84 16" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="52" cy="62" r="4.5" fill="${e}"/><circle cx="68" cy="62" r="4.5" fill="${e}"/>
+      <path d="M52 80 Q60 88 68 80" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`},
+    {name:'Echo Jelly', kind:'Drifting Spirit', c:'#ff9a4d', e:'#35e8ff', hp:1.5, art:(c,e)=>`
+      <path d="M16 62 Q16 12 60 12 Q104 12 104 62Z" fill="#3a1a0a" stroke="${c}" stroke-width="3"/>
+      <path d="M28 54 Q28 26 60 26 Q92 26 92 54" fill="none" stroke="${c}" stroke-width="2" opacity=".5"/>
+      <path d="M26 62 Q22 84 30 108 M44 62 Q40 88 46 112 M60 62 Q56 86 62 110 M76 62 Q82 88 74 112 M94 62 Q98 84 90 108" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round"/>
+      <ellipse cx="44" cy="42" rx="7" ry="9" fill="${e}"/><ellipse cx="76" cy="42" rx="7" ry="9" fill="${e}"/>
+      <ellipse cx="44" cy="44" rx="3" ry="4" fill="#07030f"/><ellipse cx="76" cy="44" rx="3" ry="4" fill="#07030f"/>`}
+  ];
+
+  // ---------- state ----------
+  const $ = id => document.getElementById(id);
+  const cv = $('game'), g = cv.getContext('2d');
+  const W = cv.width, H = cv.height, HIT_Y = 540, TOP_Y = 40;
+  const laneW = W / MOVES.length;
+
+  let actx = null, master = null, muted = false;
+  let state = 'idle';               // idle | countdown | playing | results
+  let songStart = 0, nextBeat = 0, notes = [], particles = [], popups = [];
+  let team, players = {}, demon, bot = false, botTimer = null;
+  let simulating = false;
+
+  function resetTeam(){
+    team = {score:0, combo:0, best:0, hits:0, misses:0, banished:0};
+    players = {};
+    renderPlayers(); updateStats();
+  }
+  function newDemon(level){
+    const type = DEMON_TYPES[(level-1) % DEMON_TYPES.length];
+    const max = Math.round((700 + level*250) * type.hp);
+    demon = {level, type, name: type.name, max, hp: max};
+    $('dName').textContent = type.name;
+    $('dName').style.color = type.c;
+    $('dSub').textContent = type.kind + ' \u00b7 level ' + level;
+    $('demonSvg').innerHTML = type.art(type.c, type.e);
+    $('demonSvg').style.filter = `drop-shadow(0 0 14px ${type.c})`;
+    $('hp').style.background = `linear-gradient(90deg, ${type.e}, ${type.c})`;
+    updateHP();
+  }
+  function updateHP(){ $('hp').style.width = Math.max(0, demon.hp/demon.max*100) + '%'; }
+
+  // ---------- audio ----------
+  function ensureAudio(){
+    if(!actx){
+      try{
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        master = actx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(actx.destination);
+      }catch(e){ actx = null; }
+    }
+    if(actx && actx.state === 'suspended') actx.resume();
+  }
+  function now(){ return actx ? actx.currentTime : performance.now()/1000; }
+  function tone(freq, t, dur, type, vol, slideTo){
+    if(!actx) return;
+    const o = actx.createOscillator(), gn = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(gn); gn.connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function noise(t, dur, vol, hp){
+    if(!actx) return;
+    const len = Math.floor(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i] = (Math.random()*2-1) * (1 - i/len);
+    const s = actx.createBufferSource(); s.buffer = buf;
+    const f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+    const gn = actx.createGain(); gn.gain.value = vol;
+    s.connect(f); f.connect(gn); gn.connect(master); s.start(t);
+  }
+  const BASS = [55, 55, 65.4, 49, 55, 55, 73.4, 65.4];       // A minor-ish groove
+  const ARP  = [220, 261.6, 329.6, 261.6, 220, 293.7, 349.2, 293.7];
+  function scheduleBeat(b){
+    const t = songStart + b * BEAT;
+    tone(120, t, 0.18, 'sine', 0.9, 40);                  // kick
+    noise(t + BEAT/2, 0.05, 0.25, 7000);                  // off-beat hat
+    if(b % 2 === 1) noise(t, 0.12, 0.35, 1800);           // snare-ish clap
+    tone(BASS[b % 8], t, BEAT*0.9, 'sawtooth', 0.22);
+    if(b >= 8){
+      tone(ARP[b % 8], t, BEAT*0.4, 'square', 0.07);
+      tone(ARP[(b+3) % 8]*2, t + BEAT/2, BEAT*0.3, 'triangle', 0.08);
+    }
+  }
+  function sfx(kind){
+    if(!actx) return; const t = actx.currentTime;
+    if(kind==='perfect'){ tone(880,t,0.12,'triangle',0.35); tone(1320,t+0.06,0.18,'triangle',0.3); }
+    else if(kind==='good'){ tone(660,t,0.14,'triangle',0.3); }
+    else if(kind==='miss'){ tone(140,t,0.2,'sawtooth',0.25,70); }
+    else if(kind==='star'){ [523,659,784,1047].forEach((f,i)=>tone(f,t+i*0.05,0.2,'square',0.2)); }
+    else if(kind==='banish'){ [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,t+i*0.07,0.3,'triangle',0.3)); noise(t,0.5,0.4,500); }
+  }
+
+  // ---------- pattern ----------
+  function rng(seed){ return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; }
+  function makePattern(){
+    const r = rng((Date.now() & 0xffff) + 7), out = []; let prev = null, run = 0;
+    for(let b = FIRST_NOTE_BEAT; b < TOTAL_BEATS - 2; b++){
+      const phrase = Math.floor(b / 16);
+      const density = 0.55 + Math.min(phrase, 3) * 0.1;
+      if(r() > density) continue;
+      let m;
+      if(b % 8 === 7 && r() < 0.6) m = 'S';
+      else { do { m = MOVES[Math.floor(r()*4)]; } while(m === prev && run >= 2); }
+      run = (m === prev) ? run + 1 : 1; prev = m;
+      out.push({move: m, time: b * BEAT, hit: false, done: false});
+    }
+    return out;
+  }
+
+  // ---------- game flow ----------
+  function startHunt(){
+    ensureAudio();
+    resetTeam(); newDemon(1); notes = makePattern(); particles = []; popups = [];
+    state = 'countdown';
+    songStart = now() + COUNTIN;          // 3 second count-in
+    nextBeat = 0;
+    $('ovStart').classList.add('hidden'); $('ovResults').classList.add('hidden'); $('ovCount').classList.remove('hidden');
+    if(bot) startBot();
+  }
+  function stopHunt(){
+    state = 'idle'; stopBotTimer();
+    $('ovCount').classList.add('hidden'); $('ovResults').classList.add('hidden'); $('ovStart').classList.remove('hidden');
+  }
+  function finish(){
+    state = 'results'; stopBotTimer();
+    const total = team.hits + team.misses, acc = total ? Math.round(team.hits/total*100) : 0;
+    $('resSummary').textContent = `Team score ${team.score}  |  Demons banished ${team.banished}  |  Accuracy ${acc}%  |  Best combo ${team.best}`;
+    const rows = Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
+    $('resTable').innerHTML = '<tr><th>#</th><th>Dancer</th><th>Hits</th><th>Perfect</th><th>Score</th></tr>' +
+      (rows.length ? rows.map(([id,p],i)=>`<tr><td>${i+1}</td><td style="color:${P_COL[id]}">Dancer ${id}</td><td>${p.hits}</td><td>${p.perfect}</td><td>${p.score}</td></tr>`).join('')
+        : '<tr><td colspan="5">No moves were received.</td></tr>');
+    $('ovResults').classList.remove('hidden');
+  }
+
+  function handleMove(pid, move){
+    pid = Number(pid);
+    if(!(pid >= 1 && pid <= MAX_PLAYERS) || !MOVES.includes(move)) return;
+    if(!players[pid]) players[pid] = {score:0, hits:0, perfect:0, last:'--'};
+    const p = players[pid];
+    p.last = MOVE_LABEL[move];
+    flashPlayer(pid);
+    if(state !== 'playing'){ renderPlayers(); return; }
+
+    const t = now();
+    let best = null, bd = 99;
+    for(const n of notes){
+      if(n.done || n.move !== move) continue;
+      const d = Math.abs(songStart + n.time - t);
+      if(d < bd){ bd = d; best = n; }
+    }
+    if(best && bd <= GOOD){
+      best.done = best.hit = true;
+      const perfect = bd <= PERFECT;
+      team.combo++; team.best = Math.max(team.best, team.combo); team.hits++;
+      const pts = (perfect ? 100 : 60) * (move === 'S' ? 2 : 1) + Math.min(team.combo, 30) * 3;
+      team.score += pts; p.score += pts; p.hits++; if(perfect) p.perfect++;
+      popup(perfect ? 'PERFECT' : 'GOOD', LANE_COL[move], MOVES.indexOf(move));
+      burst(MOVES.indexOf(move), LANE_COL[move], perfect ? 22 : 12);
+      sfx(move === 'S' ? 'star' : perfect ? 'perfect' : 'good');
+      damage(pts * 0.55);
+    } else {
+      team.combo = 0;
+      popup('OFF BEAT', '#ff4d5e', MOVES.indexOf(move));
+      sfx('miss');
+    }
+    renderPlayers(); updateStats();
+  }
+  function damage(n){
+    demon.hp -= n; updateHP();
+    $('demonBox').classList.remove('hit'); void $('demonBox').offsetWidth; $('demonBox').classList.add('hit');
+    if(demon.hp <= 0){
+      team.banished++; team.score += 500; sfx('banish');
+      popup('BANISHED!', '#ffe14d', 2, true);
+      for(let i=0;i<5;i++) burst(i, '#ffe14d', 24);
+      newDemon(demon.level + 1);
+    }
+  }
+
+  // ---------- render ----------
+  function popup(text, color, lane, big){ popups.push({text, color, x: laneW*lane + laneW/2, y: HIT_Y - 50, life: 1, big}); }
+  function burst(lane, color, n){
+    for(let i=0;i<n;i++){
+      const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 180;
+      particles.push({x: laneW*lane + laneW/2, y: HIT_Y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 60, life: 1, color});
+    }
+  }
+  let lastFrame = performance.now();
+  function frame(){
+    const tn = performance.now(), dt = Math.min(0.05, (tn - lastFrame)/1000); lastFrame = tn;
+    update(dt); draw(tn/1000);
+    requestAnimationFrame(frame);
+  }
+  function update(dt){
+    if(state === 'countdown' || state === 'playing'){
+      const t = now();
+      while(nextBeat < TOTAL_BEATS && songStart + nextBeat * BEAT < t + 0.2){ scheduleBeat(nextBeat); nextBeat++; }
+      if(state === 'countdown'){
+        const left = songStart - t;
+        if(left > 0){ $('countNum').textContent = Math.max(1, Math.ceil(left * 3 / COUNTIN)); }
+        // start notes falling early so first notes have lead time
+        if(t >= songStart - 0.0){ state = 'playing'; $('ovCount').classList.add('hidden'); }
+      }
+      if(state === 'playing'){
+        for(const n of notes){
+          if(!n.done && t > songStart + n.time + GOOD){
+            n.done = true; team.misses++; team.combo = 0; popup('MISS', '#ff4d5e', MOVES.indexOf(n.move)); sfx('miss'); updateStats();
+          }
+        }
+        if(t > songStart + (TOTAL_BEATS) * BEAT) finish();
+      }
+    }
+    for(const p of particles){ p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 300*dt; p.life -= dt*1.6; }
+    particles = particles.filter(p => p.life > 0);
+    for(const p of popups){ p.y -= 30*dt; p.life -= dt*1.3; }
+    popups = popups.filter(p => p.life > 0);
+  }
+  function draw(ts){
+    g.clearRect(0,0,W,H);
+    const bg = g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#120730'); bg.addColorStop(1,'#07030f');
+    g.fillStyle = bg; g.fillRect(0,0,W,H);
+    const t = now();
+    const pulse = (state === 'playing' || state === 'countdown') ? Math.max(0, 1 - (((t - songStart) / BEAT) % 1 + 1) % 1) : 0.15;
+
+    // lanes
+    for(let i=0;i<MOVES.length;i++){
+      const m = MOVES[i], x = i*laneW;
+      g.fillStyle = `rgba(255,255,255,${0.025 + (i%2)*0.02})`; g.fillRect(x, 0, laneW, H);
+      const grad = g.createLinearGradient(0, HIT_Y-160, 0, HIT_Y+40);
+      grad.addColorStop(0, 'transparent'); grad.addColorStop(1, LANE_COL[m] + '33');
+      g.fillStyle = grad; g.fillRect(x, HIT_Y-160, laneW, 200);
+      g.strokeStyle = 'rgba(155,107,255,.25)'; g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke();
+    }
+    // hit line + receptors
+    g.lineWidth = 3; g.strokeStyle = `rgba(255,255,255,${0.4 + pulse*0.5})`; g.beginPath(); g.moveTo(0,HIT_Y); g.lineTo(W,HIT_Y); g.stroke();
+    for(let i=0;i<MOVES.length;i++){
+      const m = MOVES[i], cx = i*laneW + laneW/2, r = 30 + pulse*4;
+      g.lineWidth = 4; g.strokeStyle = LANE_COL[m]; g.shadowColor = LANE_COL[m]; g.shadowBlur = 14;
+      g.beginPath(); g.arc(cx, HIT_Y, r, 0, Math.PI*2); g.stroke(); g.shadowBlur = 0;
+      g.fillStyle = LANE_COL[m] + '88'; g.font = 'bold 26px Segoe UI, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(MOVE_ICON[m], cx, HIT_Y+1);
+      g.font = '11px Segoe UI, sans-serif'; g.fillStyle = '#9a8bc7'; g.fillText(MOVE_LABEL[m], cx, HIT_Y + 52);
+    }
+    // notes
+    if(state === 'playing' || state === 'countdown'){
+      for(const n of notes){
+        if(n.done) continue;
+        const until = songStart + n.time - t;
+        if(until > LEAD) continue;
+        const y = HIT_Y - (until / LEAD) * (HIT_Y - TOP_Y);
+        const i = MOVES.indexOf(n.move), cx = i*laneW + laneW/2, col = LANE_COL[n.move];
+        g.shadowColor = col; g.shadowBlur = 18; g.fillStyle = col;
+        g.beginPath();
+        if(n.move === 'S'){ star(g, cx, y, 5, 30, 14); } else { g.arc(cx, y, 27, 0, Math.PI*2); }
+        g.fill(); g.shadowBlur = 0;
+        g.fillStyle = '#10051f'; g.font = 'bold 26px Segoe UI, sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+        if(n.move !== 'S') g.fillText(MOVE_ICON[n.move], cx, y+1);
+      }
+    }
+    // particles + popups
+    for(const p of particles){ g.globalAlpha = Math.max(0,p.life); g.fillStyle = p.color; g.fillRect(p.x, p.y, 5, 5); }
+    g.globalAlpha = 1;
+    for(const p of popups){
+      g.globalAlpha = Math.max(0, p.life); g.fillStyle = p.color; g.textAlign = 'center';
+      g.font = `bold ${p.big ? 34 : 18}px Segoe UI, sans-serif`; g.fillText(p.text, p.big ? W/2 : p.x, p.y);
+    }
+    g.globalAlpha = 1;
+    // combo
+    if(team && team.combo >= 3){
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.font = 'bold 22px Segoe UI, sans-serif'; g.textAlign = 'center';
+      g.fillText(team.combo + ' COMBO', W/2, 22);
+    }
+  }
+  function star(c, cx, cy, spikes, outer, inner){
+    let rot = Math.PI/2*3, step = Math.PI/spikes; c.moveTo(cx, cy-outer);
+    for(let i=0;i<spikes;i++){
+      c.lineTo(cx + Math.cos(rot)*outer, cy + Math.sin(rot)*outer); rot += step;
+      c.lineTo(cx + Math.cos(rot)*inner, cy + Math.sin(rot)*inner); rot += step;
+    }
+    c.closePath();
+  }
+
+  // ---------- UI ----------
+  function updateStats(){
+    $('sScore').textContent = team.score; $('sCombo').textContent = team.combo; $('sBan').textContent = team.banished;
+    const total = team.hits + team.misses; $('sAcc').textContent = total ? Math.round(team.hits/total*100) + '%' : '--';
+  }
+  function renderPlayers(){
+    const box = $('players'); box.innerHTML = '';
+    for(let i=1;i<=4;i++){
+      const p = players[i];
+      const el = document.createElement('div'); el.className = 'player' + (p ? ' seen' : ''); el.id = 'pl' + i;
+      el.innerHTML = `<div class="badge" style="background:${P_COL[i]}">${i}</div>
+        <div><div class="pname">Dancer ${i}</div><div class="pmeta">${p ? p.hits + ' hits, ' + p.perfect + ' perfect' : 'waiting for micro:bit...'}</div><div class="last">${p ? 'Last move: ' + p.last : ''}</div></div>
+        <div class="pscore">${p ? p.score : 0}</div>`;
+      box.appendChild(el);
+    }
+    // extra dancers beyond 4 (only if they show up)
+    for(const id of Object.keys(players)){
+      if(id > 4){
+        const p = players[id], el = document.createElement('div'); el.className = 'player seen'; el.id = 'pl' + id;
+        el.innerHTML = `<div class="badge" style="background:${P_COL[id]}">${id}</div><div><div class="pname">Dancer ${id}</div><div class="pmeta">${p.hits} hits, ${p.perfect} perfect</div><div class="last">Last move: ${p.last}</div></div><div class="pscore">${p.score}</div>`;
+        box.appendChild(el);
+      }
+    }
+  }
+  function flashPlayer(pid){
+    renderPlayers();
+    const el = $('pl' + pid); if(!el) return;
+    el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 180);
+  }
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 3500);
+  }
+  function setStatus(text, mode){
+    $('statusText').textContent = text; $('dot').className = 'dot' + (mode ? ' ' + mode : '');
+  }
+
+  // teacher matrix
+  (function buildMatrix(){
+    const m = $('matrix'); m.appendChild(document.createElement('span'));
+    MOVES.forEach(mv => { const s = document.createElement('span'); s.className = 'lbl'; s.style.textAlign = 'center'; s.textContent = MOVE_ICON[mv]; m.appendChild(s); });
+    for(let p=1;p<=4;p++){
+      const l = document.createElement('span'); l.className = 'lbl'; l.textContent = 'P' + p; m.appendChild(l);
+      MOVES.forEach(mv => {
+        const b = document.createElement('button'); b.textContent = MOVE_ICON[mv]; b.title = `Dancer ${p} ${MOVE_LABEL[mv]}`;
+        b.style.borderColor = LANE_COL[mv] + '88';
+        b.addEventListener('click', () => { ensureAudio(); handleMove(p, mv); });
+        m.appendChild(b);
+      });
+    }
+  })();
+
+  // keyboard
+  const KEYS = {
+    ArrowLeft:[1,'L'], ArrowRight:[1,'R'], ArrowUp:[1,'U'], ArrowDown:[1,'D'], ' ':[1,'S'],
+    a:[2,'L'], d:[2,'R'], w:[2,'U'], s:[2,'D'], e:[2,'S']
+  };
+  window.addEventListener('keydown', e => {
+    if(e.repeat) return;
+    const k = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if(k){ e.preventDefault(); ensureAudio(); handleMove(k[0], k[1]); }
+  });
+
+  // demo bot (plays perfectly-ish so you can preview the game)
+  function startBot(){
+    stopBotTimer();
+    botTimer = setInterval(() => {
+      if(state !== 'playing') return;
+      const t = now();
+      for(const n of notes){
+        if(n.done || n._bot) continue;
+        const d = songStart + n.time - t;
+        if(d < 0.05){ n._bot = true; handleMove(1 + Math.floor(Math.random()*3), Math.random() < 0.08 ? MOVES[(MOVES.indexOf(n.move)+1)%4] : n.move); }
+      }
+    }, 20);
+  }
+  function stopBotTimer(){ if(botTimer){ clearInterval(botTimer); botTimer = null; } }
+
+  // ---------- Web Serial ----------
+  let port = null, reader = null, keepReading = false;
+  const LINE_RE = /^P?(\d)\s*[,:]\s*([LRUDS])\s*$/i;
+  function handleLine(line){
+    line = line.trim(); if(!line) return;
+    const m = LINE_RE.exec(line);
+    if(m) handleMove(m[1], m[2].toUpperCase());
+  }
+  async function connect(){
+    if(!('serial' in navigator)){ toast('Web Serial needs Chrome or Edge on a computer. Use the test matrix or keyboard instead.'); return; }
+    try{
+      ensureAudio();
+      port = await navigator.serial.requestPort();
+      await port.open({baudRate: 115200});
+      keepReading = true; simulating = false;
+      setStatus('Bridge connected', 'on'); $('btnConnect').textContent = 'Disconnect';
+      readLoop();
+    }catch(err){
+      if(err && err.name !== 'NotFoundError') toast('Could not connect: ' + err.message);
+    }
+  }
+  async function readLoop(){
+    const decoder = new TextDecoder(); let buf = '';
+    while(port && port.readable && keepReading){
+      reader = port.readable.getReader();
+      try{
+        while(true){
+          const {value, done} = await reader.read();
+          if(done) break;
+          buf += decoder.decode(value, {stream:true});
+          const parts = buf.split('\n');       // real newline, not the literal two characters
+          buf = parts.pop();
+          parts.forEach(handleLine);
+        }
+      }catch(e){ /* unplugged or closed */ }
+      finally{ reader.releaseLock(); }
+    }
+  }
+  async function disconnect(){
+    keepReading = false;
+    try{ if(reader) await reader.cancel(); }catch(e){}
+    try{ if(port) await port.close(); }catch(e){}
+    port = null; setStatus('Not connected'); $('btnConnect').textContent = 'Connect bridge micro:bit';
+  }
+  $('btnConnect').addEventListener('click', () => port ? disconnect() : connect());
+
+  // ---------- wiring ----------
+  $('btnStart').addEventListener('click', startHunt);
+  $('btnAgain').addEventListener('click', startHunt);
+  $('btnStop').addEventListener('click', stopHunt);
+  $('btnResetScores').addEventListener('click', () => { resetTeam(); if(demon) newDemon(1); toast('Scores reset'); });
+  $('btnBot').addEventListener('click', () => { bot = !bot; $('btnBot').textContent = 'Demo bot: ' + (bot ? 'on' : 'off'); bot ? (state==='playing' && startBot()) : stopBotTimer(); });
+  $('btnSim').addEventListener('click', () => {
+    simulating = !simulating;
+    if(!port) setStatus(simulating ? 'Simulated bridge (test matrix / keyboard)' : 'Not connected', simulating ? 'sim' : '');
+  });
+  $('btnMute').addEventListener('click', () => {
+    muted = !muted; $('btnMute').textContent = 'Sound: ' + (muted ? 'off' : 'on'); if(master) master.gain.value = muted ? 0 : 0.8;
+  });
+  window.addEventListener('beforeunload', () => { try{ port && port.close(); }catch(e){} });
+
+  resetTeam(); newDemon(1);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
